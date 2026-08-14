@@ -1,95 +1,28 @@
 // src/lib/dataStore.js
-// Simple wrapper around Supabase for travel memories
+// Supabase wrapper for travel memories — no auth required
 import { supabase } from './supabase';
 
-/**
- * Helper to get the current logged-in username.
- */
-function getCurrentUsername() {
-  return localStorage.getItem('travel_username');
-}
+// ─── MEMORIES ───────────────────────────────────────────────────────────────
 
-/**
- * CUSTOM AUTH: Sign In with Username/Password
- */
-export async function signIn(username, password) {
-  const { data, error } = await supabase
-    .from('travel_users')
-    .select('*')
-    .eq('username', username)
-    .eq('password', password)
-    .single();
-
-  if (error || !data) {
-    throw new Error('Invalid username or password');
-  }
-
-  localStorage.setItem('travel_username', username);
-  return data;
-}
-
-/**
- * CUSTOM AUTH: Sign Up with Username/Password
- */
-export async function signUp(username, password) {
-  // Check if exists
-  const { data: existing } = await supabase
-    .from('travel_users')
-    .select('username')
-    .eq('username', username)
-    .single();
-
-  if (existing) throw new Error('Username already taken');
-
-  const { data, error } = await supabase
-    .from('travel_users')
-    .insert([{ username, password }])
-    .select();
-
-  if (error) throw error;
-  localStorage.setItem('travel_username', username);
-  return data[0];
-}
-
-/**
- * CUSTOM AUTH: Sign Out
- */
-export function signOut() {
-  localStorage.removeItem('travel_username');
-  window.location.reload();
-}
-
-/**
- * Fetch all memories for the current user.
- */
 export async function fetchMemories() {
-  const username = getCurrentUsername();
-  if (!username) return [];
-
   const { data, error } = await supabase
     .from('memories')
     .select('*')
-    .eq('username', username);
-  
+    .order('created_at', { ascending: false });
+
   if (error) {
     console.error('Error fetching memories:', error);
     return [];
   }
-  return data;
+  return data || [];
 }
 
-/**
- * Add a new memory record for the current user.
- */
 export async function addMemory(memory) {
-  const username = getCurrentUsername();
-  if (!username) return null;
-
   const { data, error } = await supabase
     .from('memories')
-    .insert([{ ...memory, username }])
+    .insert([memory])
     .select();
-    
+
   if (error) {
     console.error('Error adding memory:', error);
     return null;
@@ -97,39 +30,50 @@ export async function addMemory(memory) {
   return data[0];
 }
 
-/**
- * Delete a memory by id (restricted to current user).
- */
 export async function deleteMemory(id) {
-  const username = getCurrentUsername();
-  if (!username) return false;
-
   const { error } = await supabase
     .from('memories')
     .delete()
-    .eq('id', id)
-    .eq('username', username);
-    
+    .eq('id', id);
+
   if (error) {
     console.error('Error deleting memory:', error);
     return false;
   }
   return true;
 }
-/**
- * Upload a file to Supabase Storage and return the public URL.
- * @param {File} file - The file object to upload.
- */
+
+export async function toggleFavorite(id, is_favorite) {
+  const { data, error } = await supabase
+    .from('memories')
+    .update({ is_favorite })
+    .eq('id', id)
+    .select();
+
+  if (error) {
+    console.error('Error toggling favorite:', error);
+    return null;
+  }
+  return data[0];
+}
+
+export async function resetMemories() {
+  const { error } = await supabase.from('memories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) console.error('Error resetting memories:', error);
+}
+
+// ─── FILE UPLOAD ─────────────────────────────────────────────────────────────
+
 export async function uploadFile(file) {
   if (!file) return null;
 
   const fileExt = file.name.split('.').pop();
-  const fileName = `${Math.random()}.${fileExt}`;
+  const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
   const filePath = `user_uploads/${fileName}`;
 
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('memories')
-    .upload(filePath, file);
+    .upload(filePath, file, { upsert: false });
 
   if (error) {
     console.error('Error uploading file:', error);
@@ -140,62 +84,30 @@ export async function uploadFile(file) {
     .from('memories')
     .getPublicUrl(filePath);
 
-  console.log('File uploaded. Public URL:', publicUrl);
   return publicUrl;
 }
-/**
- * Update the favorite status (restricted to current user).
- */
-export async function toggleFavorite(id, is_favorite) {
-  const username = getCurrentUsername();
-  if (!username) return null;
 
-  const { data, error } = await supabase
-    .from('memories')
-    .update({ is_favorite })
-    .eq('id', id)
-    .eq('username', username)
-    .select();
-    
-  if (error) {
-    console.error('Error toggling favorite:', error);
-    return null;
-  }
-  return data[0];
-}
+// ─── FUTURE PLANS ────────────────────────────────────────────────────────────
 
-/**
- * Fetch all future plans for the current user.
- */
 export async function fetchFuturePlans() {
-  const username = getCurrentUsername();
-  if (!username) return [];
-
   const { data, error } = await supabase
     .from('future_plans')
     .select('*')
-    .eq('username', username)
     .order('created_at', { ascending: false });
-    
+
   if (error) {
     console.error('Error fetching future plans:', error);
     return [];
   }
-  return data;
+  return data || [];
 }
 
-/**
- * Add a new future plan.
- */
 export async function addFuturePlan(plan) {
-  const username = getCurrentUsername();
-  if (!username) return null;
-
   const { data, error } = await supabase
     .from('future_plans')
-    .insert([{ ...plan, username }])
+    .insert([plan])
     .select();
-    
+
   if (error) {
     console.error('Error adding future plan:', error);
     return null;
@@ -203,19 +115,12 @@ export async function addFuturePlan(plan) {
   return data[0];
 }
 
-/**
- * Delete a future plan.
- */
 export async function deleteFuturePlan(id) {
-  const username = getCurrentUsername();
-  if (!username) return false;
-
   const { error } = await supabase
     .from('future_plans')
     .delete()
-    .eq('id', id)
-    .eq('username', username);
-    
+    .eq('id', id);
+
   if (error) {
     console.error('Error deleting future plan:', error);
     return false;
@@ -223,38 +128,32 @@ export async function deleteFuturePlan(id) {
   return true;
 }
 
-/**
- * Fetch all expenses for current user.
- */
-export async function fetchExpenses() {
-  const username = getCurrentUsername();
-  if (!username) return [];
+export async function resetFuturePlans() {
+  const { error } = await supabase.from('future_plans').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) console.error('Error resetting future plans:', error);
+}
 
+// ─── EXPENSES ────────────────────────────────────────────────────────────────
+
+export async function fetchExpenses() {
   const { data, error } = await supabase
     .from('expenses')
     .select('*')
-    .eq('username', username)
     .order('date', { ascending: false });
-    
+
   if (error) {
     console.error('Error fetching expenses:', error);
     return [];
   }
-  return data;
+  return data || [];
 }
 
-/**
- * Add a new expense.
- */
 export async function addExpense(expense) {
-  const username = getCurrentUsername();
-  if (!username) return null;
-
   const { data, error } = await supabase
     .from('expenses')
-    .insert([{ ...expense, username }])
+    .insert([expense])
     .select();
-    
+
   if (error) {
     console.error('Error adding expense:', error);
     return null;
@@ -262,14 +161,12 @@ export async function addExpense(expense) {
   return data[0];
 }
 
-/**
- * Delete an expense by id.
- */
 export async function deleteExpense(id) {
   const { error } = await supabase
     .from('expenses')
     .delete()
     .eq('id', id);
+
   if (error) {
     console.error('Error deleting expense:', error);
     return false;
@@ -277,43 +174,34 @@ export async function deleteExpense(id) {
   return true;
 }
 
-/**
- * Fetch the current user's budget.
- */
-export async function fetchBudget() {
-  const username = getCurrentUsername();
-  if (!username) return 5000;
+export async function resetExpenses() {
+  const { error } = await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) console.error('Error resetting expenses:', error);
+}
 
+// ─── BUDGET ──────────────────────────────────────────────────────────────────
+
+export async function fetchBudget() {
   const { data, error } = await supabase
     .from('budgets')
     .select('amount')
-    .eq('username', username)
+    .limit(1)
     .single();
-  
+
   if (error) {
-    if (error.code === 'PGRST116') return 5000; // No budget set yet
+    if (error.code === 'PGRST116') return 5000;
     console.error('Error fetching budget:', error);
     return 5000;
   }
-  return data.amount;
+  return data?.amount ?? 5000;
 }
 
-/**
- * Update the budget for current user.
- */
 export async function updateBudget(amount) {
-  const username = getCurrentUsername();
-  if (!username) return false;
-
-  const { data, error } = await supabase
+  // Use a fixed id so upsert always updates the same row
+  const { error } = await supabase
     .from('budgets')
-    .upsert({ 
-      username, 
-      amount, 
-      updated_at: new Date().toISOString() 
-    }, { onConflict: 'username' })
-    .select();
-    
+    .upsert({ id: 1, amount, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+
   if (error) {
     console.error('Error updating budget:', error);
     return false;
@@ -321,38 +209,27 @@ export async function updateBudget(amount) {
   return true;
 }
 
-/**
- * Fetch all itinerary events for the current day.
- */
-export async function fetchItinerary() {
-  const username = getCurrentUsername();
-  if (!username) return [];
+// ─── ITINERARY ───────────────────────────────────────────────────────────────
 
+export async function fetchItinerary() {
   const { data, error } = await supabase
     .from('itinerary')
     .select('*')
-    .eq('username', username)
     .order('time', { ascending: true });
-    
+
   if (error) {
     console.error('Error fetching itinerary:', error);
     return [];
   }
-  return data;
+  return data || [];
 }
 
-/**
- * Add a new itinerary event.
- */
 export async function addItinerary(event) {
-  const username = getCurrentUsername();
-  if (!username) return null;
-
   const { data, error } = await supabase
     .from('itinerary')
-    .insert([{ ...event, username }])
+    .insert([event])
     .select();
-    
+
   if (error) {
     console.error('Error adding itinerary event:', error);
     return null;
@@ -360,19 +237,12 @@ export async function addItinerary(event) {
   return data[0];
 }
 
-/**
- * Delete an itinerary event by id.
- */
 export async function deleteItinerary(id) {
-  const username = getCurrentUsername();
-  if (!username) return false;
-
   const { error } = await supabase
     .from('itinerary')
     .delete()
-    .eq('id', id)
-    .eq('username', username);
-    
+    .eq('id', id);
+
   if (error) {
     console.error('Error deleting itinerary event:', error);
     return false;
@@ -380,20 +250,21 @@ export async function deleteItinerary(id) {
   return true;
 }
 
-/**
- * RESET ALL DATA for the current user.
- */
-export async function resetUserData() {
-  const username = getCurrentUsername();
-  if (!username) return false;
+export async function resetItinerary() {
+  const { error } = await supabase.from('itinerary').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) console.error('Error resetting itinerary:', error);
+}
 
+// ─── FULL RESET ───────────────────────────────────────────────────────────────
+
+export async function resetUserData() {
   try {
     await Promise.all([
       resetMemories(),
       resetItinerary(),
       resetExpenses(),
       resetFuturePlans(),
-      supabase.from('budgets').delete().eq('username', username)
+      supabase.from('budgets').delete().neq('id', 0)
     ]);
     return true;
   } catch (err) {
@@ -402,22 +273,8 @@ export async function resetUserData() {
   }
 }
 
-export async function resetMemories() {
-  const username = getCurrentUsername();
-  return await supabase.from('memories').delete().eq('username', username);
-}
+// ─── LEGACY STUBS (kept so nothing breaks) ───────────────────────────────────
 
-export async function resetItinerary() {
-  const username = getCurrentUsername();
-  return await supabase.from('itinerary').delete().eq('username', username);
-}
-
-export async function resetExpenses() {
-  const username = getCurrentUsername();
-  return await supabase.from('expenses').delete().eq('username', username);
-}
-
-export async function resetFuturePlans() {
-  const username = getCurrentUsername();
-  return await supabase.from('future_plans').delete().eq('username', username);
-}
+export async function signIn() {}
+export async function signUp() {}
+export function signOut() { window.location.reload(); }

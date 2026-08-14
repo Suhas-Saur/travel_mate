@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import Login from './views/Login';
-import { supabase } from './lib/supabase';
 import Sidebar from './components/Sidebar';
 import MapContainer from './components/MapContainer';
 import CostManagement from './views/CostManagement';
@@ -14,24 +12,11 @@ import RecommendationModal from './components/RecommendationModal';
 
 function App() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState(localStorage.getItem('travel_username'));
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState(null);
   const [mapFocus, setMapFocus] = useState(null);
   const [mapClickCoord, setMapClickCoord] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-
-  useEffect(() => {
-    // Basic local session check
-    const checkSession = () => {
-      const user = localStorage.getItem('travel_username');
-      setUsername(user);
-    };
-    
-    checkSession();
-    // In a real app, we'd use a context or event listener, 
-    // but for 'reduced security' a reload/check is fine.
-  }, []);
 
   useEffect(() => {
     let watchId = null;
@@ -69,10 +54,6 @@ function App() {
   const handlePinSelect = (focusData) => {
     setMapFocus(focusData);
   };
-
-  if (!username) {
-    return <Login />;
-  }
 
   return (
     <div className="app-container">

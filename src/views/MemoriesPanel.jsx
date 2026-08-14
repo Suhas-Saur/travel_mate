@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { History, Image as ImageIcon, Video, Heart, Plus, Loader, Trash2, MapPin } from 'lucide-react';
-import { fetchMemories, toggleFavorite, deleteMemory } from '../lib/dataStore';
+import { fetchMemories, toggleFavorite, deleteMemory, resetMemories } from '../lib/dataStore';
 import AddMemoryModal from '../components/AddMemoryModal';
 
 const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
