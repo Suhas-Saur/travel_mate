@@ -8,6 +8,8 @@
   Plan trips • Track expenses • Build itineraries • Save memories
 </p>
 
+🌐 **[Live Demo](https://Suhas-Saur.github.io/travel_mate/)** • 🖥️ **[GitHub Repository](https://github.com/Suhas-Saur/travel_mate)**
+
 <br>
 
 <img src="https://img.shields.io/badge/Project-Travel%20Mate-59a653?style=for-the-badge">
@@ -28,6 +30,9 @@
 **Travel Mate** is a travel planning and management application designed to keep your complete journey organized in one place.
 
 Instead of managing destinations, budgets, schedules, and memories across different applications, Travel Mate brings them together in a single dashboard.
+
+You can view the live project on GitHub Pages: **[https://Suhas-Saur.github.io/travel_mate/](https://Suhas-Saur.github.io/travel_mate/)**
+or access the source code repository: **[https://github.com/Suhas-Saur/travel_mate](https://github.com/Suhas-Saur/travel_mate)**
 
 ---
 
