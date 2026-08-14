@@ -14,27 +14,105 @@ function createMockClient() {
   function from(table) {
     const tableData = ensureTable(table);
 
-    const chain = {
-      async select() {
-        return { data: [...tableData], error: null };
-      },
-      order() { return this; },
-      async insert(rows) {
-        const inserted = rows.map(r => ({ id: (Math.random() + 1).toString(36).slice(2), ...r }));
-        tableData.push(...inserted);
-        return { data: inserted, error: null };
-      },
-      async delete() { return { data: [], error: null }; },
-      async update(_obj) { return { data: [], error: null }; },
-      async upsert(_obj) { return { data: [], error: null }; },
-      eq() { return this; },
-      neq() { return this; },
-      limit() { return this; },
-      single() { return { data: tableData[0] ?? null, error: null }; },
-      select: async function() { return { data: [...tableData], error: null }; }
+    const createChain = () => {
+      let queryResult = null;
+      let isDelete = false;
+      let filterCol = null;
+      let filterVal = null;
+      let isNeq = false;
+
+      const chain = {
+        select() {
+          if (!queryResult) {
+            queryResult = { data: [...tableData], error: null };
+          }
+          return this;
+        },
+        order() { return this; },
+        limit() { return this; },
+        eq(col, val) {
+          filterCol = col;
+          filterVal = val;
+          isNeq = false;
+          return this;
+        },
+        neq(col, val) {
+          filterCol = col;
+          filterVal = val;
+          isNeq = true;
+          return this;
+        },
+        single() {
+          if (queryResult && Array.isArray(queryResult.data)) {
+            queryResult.data = queryResult.data[0] ?? null;
+          }
+          return this;
+        },
+        insert(rows) {
+          const inserted = rows.map(r => ({ id: (Math.random() + 1).toString(36).slice(2), ...r }));
+          tableData.push(...inserted);
+          queryResult = { data: inserted, error: null };
+          return this;
+        },
+        update(obj) {
+          queryResult = { data: [obj], error: null };
+          return this;
+        },
+        upsert(obj) {
+          if (table === 'budgets') {
+            const index = tableData.findIndex(item => item.id === obj.id);
+            if (index > -1) {
+              tableData[index] = { ...tableData[index], ...obj };
+            } else {
+              tableData.push(obj);
+            }
+          }
+          queryResult = { data: [obj], error: null };
+          return this;
+        },
+        delete() {
+          isDelete = true;
+          return this;
+        },
+        async then(onFulfilled, onRejected) {
+          try {
+            if (filterCol && filterVal !== null) {
+              if (isDelete) {
+                for (let i = tableData.length - 1; i >= 0; i--) {
+                  const matches = isNeq 
+                    ? tableData[i][filterCol] !== filterVal 
+                    : tableData[i][filterCol] === filterVal;
+                  if (matches) {
+                    tableData.splice(i, 1);
+                  }
+                }
+                queryResult = { data: [], error: null };
+              } else if (queryResult && Array.isArray(queryResult.data)) {
+                queryResult.data = queryResult.data.filter(item => {
+                  return isNeq 
+                    ? item[filterCol] !== filterVal 
+                    : item[filterCol] === filterVal;
+                });
+              }
+            } else if (isDelete) {
+              tableData.length = 0;
+              queryResult = { data: [], error: null };
+            }
+
+            if (!queryResult) {
+              queryResult = { data: [...tableData], error: null };
+            }
+
+            return Promise.resolve(queryResult).then(onFulfilled, onRejected);
+          } catch (err) {
+            return Promise.reject(err).catch(onRejected);
+          }
+        }
+      };
+      return chain;
     };
 
-    return chain;
+    return createChain();
   }
 
   const storage = {
