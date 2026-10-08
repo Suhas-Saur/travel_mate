@@ -31,8 +31,22 @@
 
 Instead of managing destinations, budgets, schedules, and memories across different applications, Travel Mate brings them together in a single dashboard.
 
-You can view the live project on GitHub Pages: **[https://Suhas-Saur.github.io/travel_mate/](https://Suhas-Saur.github.io/travel_mate/)**
-or access the source code repository: **[https://github.com/Suhas-Saur/travel_mate](https://github.com/Suhas-Saur/travel_mate)**
+---
+
+## 🌐 Live Demo
+
+[Open Live Demo](https://Suhas-Saur.github.io/travel_mate/)
+
+---
+
+## 🚀 Deployment
+
+This project is deployed independently from the development environment.
+
+* **Production URL:** [https://Suhas-Saur.github.io/travel_mate/](https://Suhas-Saur.github.io/travel_mate/)
+* **Hosting Platform:** GitHub Pages
+* **Repository:** [https://github.com/Suhas-Saur/travel_mate](https://github.com/Suhas-Saur/travel_mate)
+
 
 ---
 

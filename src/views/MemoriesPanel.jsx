@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { History, Image as ImageIcon, Video, Heart, Plus, Loader, Trash2, MapPin } from 'lucide-react';
+import { History, Image as ImageIcon, Video, Heart, Plus, Loader, Trash2, MapPin, ChevronLeft } from 'lucide-react';
 import { fetchMemories, toggleFavorite, deleteMemory, resetMemories } from '../lib/dataStore';
 import AddMemoryModal from '../components/AddMemoryModal';
 
-const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
+const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect, isCollapsed, onToggleCollapse }) => {
   const [memories, setMemories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -19,7 +19,6 @@ const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Force a small delay to ensure Supabase sync if just added
       const data = await fetchMemories();
       setMemories(data || []);
     } catch (err) {
@@ -38,7 +37,6 @@ const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
     
     if (confirmDeleteId !== id) {
       setConfirmDeleteId(id);
-      // Reset after 3 seconds if not confirmed
       setTimeout(() => setConfirmDeleteId(null), 3000);
       return;
     }
@@ -74,35 +72,42 @@ const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
     }
   };
 
-  if (loading && memories.length === 0) {
+  if (isCollapsed) {
     return (
-      <div className="dashboard-panel glass-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
-        <Loader className="animate-spin" color="var(--accent)" />
-      </div>
+      <button 
+        onClick={onToggleCollapse}
+        className="panel-expand-pill"
+        title="Expand Memories"
+      >
+        <History size={18} color="var(--accent)" />
+        <span>Open Past Memories ({memories.length})</span>
+        <ChevronLeft size={16} style={{ transform: 'rotate(180deg)' }} />
+      </button>
     );
   }
 
   return (
-    <div className="dashboard-panel glass-panel" style={{ right: '24px', left: 'auto', width: '420px' }}>
-      <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <History className="icon" /> 
+    <div className="dashboard-panel glass-panel">
+      <div className="panel-header-row">
+        <div className="panel-title">
+          <History className="icon" color="var(--accent)" /> 
           Past Memories
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button 
             style={{ 
-              background: confirmDeleteId === 'all' ? 'var(--danger)' : 'none', 
+              background: confirmDeleteId === 'all' ? 'var(--danger)' : 'rgba(239, 68, 68, 0.08)', 
               border: 'none', 
               color: confirmDeleteId === 'all' ? 'white' : 'var(--danger)', 
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              padding: '6px 12px',
+              padding: '6px 10px',
               borderRadius: '8px',
               fontSize: '0.75rem',
-              transition: '0.3s'
+              fontWeight: '600',
+              transition: '0.2s'
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -115,44 +120,53 @@ const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
               }
             }}
           >
-            <Trash2 size={16} /> {confirmDeleteId === 'all' ? 'Confirm Reset?' : 'Reset'}
+            <Trash2 size={14} /> {confirmDeleteId === 'all' ? 'Confirm?' : 'Reset'}
           </button>
           <button 
-            style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex' }}
             onClick={() => setIsAdding(true)}
+            className="sidebar-toggle-btn"
+            title="Add Memory"
           >
-            <Plus size={20} />
+            <Plus size={18} />
+          </button>
+          <button 
+            onClick={onToggleCollapse}
+            className="sidebar-toggle-btn"
+            style={{ width: '30px', height: '30px', borderRadius: '8px' }}
+            title="Minimize Panel to View Map"
+          >
+            <ChevronLeft size={17} />
           </button>
         </div>
       </div>
 
-      <p style={{ marginBottom: '20px', fontSize: '0.9rem', color: 'var(--secondary-text)' }}>
-        {memories.length > 0 ? 'Relive your previous trips and attached media.' : 'No memories found. Click + to add your first one!'}
+      <p style={{ marginBottom: '16px', fontSize: '0.85rem', color: '#64748b' }}>
+        {memories.length > 0 ? 'Relive past journeys, locations, and media.' : 'No memories yet. Click + to add your first memory!'}
       </p>
 
       {loading && <div style={{ textAlign: 'center', marginBottom: '16px' }}><Loader className="animate-spin" size={20} color="var(--accent)" /></div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
         {memories.map((mem) => (
           <div 
             key={mem.id} 
             onClick={() => handleLocateMemory(mem)}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.85)',
+              borderRadius: '14px',
               overflow: 'hidden',
-              border: '1px solid var(--glass-border)',
-              transition: '0.3s',
+              border: '1px solid rgba(0, 0, 0, 0.08)',
+              transition: '0.2s',
               cursor: 'pointer'
             }} className="memory-card">
-            <div style={{ height: '180px', width: '100%', position: 'relative', background: 'rgba(0,0,0,0.05)' }}>
+            <div style={{ height: '160px', width: '100%', position: 'relative', background: '#f1f5f9' }}>
               {mem.media_url ? (
                 <img 
                   src={mem.media_url} 
                   alt={mem.location} 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                   onError={(e) => {
-                    // Fallback if image fails to load
                     e.target.style.display = 'none';
                     e.target.nextSibling.style.display = 'flex';
                   }}
@@ -165,34 +179,34 @@ const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
                 alignItems: 'center', 
                 justifyContent: 'center',
                 flexDirection: 'column',
-                gap: '8px'
+                gap: '6px'
               }}>
-                <ImageIcon color="var(--secondary-text)" size={32} />
-                <span style={{ fontSize: '0.7rem', color: 'var(--secondary-text)' }}>No Media</span>
+                <ImageIcon color="#94a3b8" size={28} />
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No Media Attached</span>
               </div>
               <div style={{
                 position: 'absolute',
-                top: '12px',
-                right: '12px',
-                background: 'rgba(0,0,0,0.5)',
+                top: '10px',
+                right: '10px',
+                background: 'rgba(0,0,0,0.6)',
                 backdropFilter: 'blur(4px)',
-                padding: '6px',
+                padding: '5px',
                 borderRadius: '50%',
                 display: 'flex'
               }}>
-                {mem.type === 'video' ? <Video size={16} color="white" /> : <ImageIcon size={16} color="white" />}
+                {mem.type === 'video' ? <Video size={14} color="white" /> : <ImageIcon size={14} color="white" />}
               </div>
             </div>
             
-            <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: 'var(--primary-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {mem.location}
-                  {mem.lat && <MapPin size={14} color="var(--accent)" />}
+                  {mem.lat && <MapPin size={13} color="var(--accent)" />}
                 </h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--secondary-text)' }}>{new Date(mem.date).toLocaleDateString()}</p>
+                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(mem.date).toLocaleDateString()}</p>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 <button 
                   onClick={(e) => handleDeleteMemory(e, mem.id)}
                   style={{ 
@@ -200,38 +214,31 @@ const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
                     border: 'none', 
                     color: confirmDeleteId === mem.id ? 'white' : 'var(--danger)', 
                     cursor: 'pointer', 
-                    padding: '8px', 
-                    opacity: confirmDeleteId === mem.id ? 1 : 0.7,
-                    borderRadius: '8px',
-                    fontSize: '0.7rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: '0.3s'
+                    padding: '6px', 
+                    borderRadius: '6px',
+                    fontSize: '0.7rem'
                   }}
                   disabled={deletingId === mem.id}
+                  title="Delete Memory"
                 >
-                  {deletingId === mem.id ? <Loader className="animate-spin" size={16} /> : 
-                   confirmDeleteId === mem.id ? <span>Confirm?</span> : <Trash2 size={18} />}
+                  {deletingId === mem.id ? <Loader className="animate-spin" size={15} /> : 
+                   confirmDeleteId === mem.id ? <span>Confirm?</span> : <Trash2 size={16} />}
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleToggleFavorite(mem.id, mem.is_favorite); }}
-                  className="like-btn"
                   style={{ 
                     background: 'none', 
                     border: 'none', 
                     cursor: 'pointer', 
                     display: 'flex', 
-                    padding: '8px',
-                    borderRadius: '50%',
-                    transition: '0.2s',
-                    background: mem.is_favorite ? 'rgba(255, 64, 129, 0.1)' : 'transparent'
+                    padding: '6px'
                   }}
+                  title="Favorite"
                 >
                   <Heart 
-                    size={20} 
-                    color={mem.is_favorite ? '#ff4081' : 'var(--accent)'} 
-                    fill={mem.is_favorite ? '#ff4081' : 'none'}
+                    size={18} 
+                    color={mem.is_favorite ? '#ef4444' : '#94a3b8'} 
+                    fill={mem.is_favorite ? '#ef4444' : 'none'}
                   />
                 </button>
               </div>
@@ -257,20 +264,8 @@ const MemoriesPanel = ({ autoOpenWith, clearAutoOpen, onPinSelect }) => {
 
       <style>{`
         .memory-card:hover {
-          transform: translateY(-4px);
-          border-color: var(--accent);
-          box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        }
-        .like-btn:hover {
-          background: rgba(255, 64, 129, 0.15);
-          transform: scale(1.1);
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.12);
         }
       `}</style>
     </div>
